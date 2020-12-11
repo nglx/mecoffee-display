@@ -1,11 +1,3 @@
-
-/*
-   Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
-   Ported to Arduino ESP32 by Evandro Copercini
-*/
-
-// Advertised Device: Name: , Address: 18:93:d7:0d:10:17, manufacturer data: 484d1893d70d1017, serviceUUID: 0000ffe0-0000-1000-8000-00805f9b34fb, txPower: 0 
-
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEScan.h>
@@ -17,10 +9,7 @@ int scanTime = 5; //In seconds
 BLEScan* pBLEScan;
 
 static BLEUUID meCoffeeServiceUUID("0000ffe0-0000-1000-8000-00805f9b34fb");
-static BLEUUID    charUUID("0000ffe1-0000-1000-8000-00805f9b34fb");
-
-
-char str[] = "Hello";
+static BLEUUID charUUID("0000ffe1-0000-1000-8000-00805f9b34fb");
 
 static boolean doConnect = false;
 static boolean connected = false;
@@ -44,7 +33,7 @@ void setup() {
   Serial.println("Scanning...");
 
   pinMode(LED,OUTPUT);
-  
+
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
@@ -101,7 +90,7 @@ void connectToServer() {
       Serial.print("Failed to find our service UUID: ");
       Serial.println(meCoffeeServiceUUID.toString().c_str());
       pClient->disconnect();
-      
+
       connected = false;
       return;
     }
@@ -139,12 +128,12 @@ void loop() {
     delay(200);
     digitalWrite(LED,LOW);
   }
-  
+
   if (doConnect == true) {
     Serial.println("Found meCoffee");
     connectToServer();
     doConnect = false;
-  }  
+  }
 
 
   delay(2000);

@@ -2,8 +2,9 @@
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include <TFT_eSPI.h>
 
-#define LED 2
+TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 
 int scanTime = 5; //In seconds
 BLEScan* pBLEScan;
@@ -31,8 +32,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 void setup() {
   Serial.begin(115200);
   Serial.println("Scanning...");
-
-  pinMode(LED,OUTPUT);
+  
+  tft.init();
 
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
@@ -49,7 +50,7 @@ class MyClientCallback : public BLEClientCallbacks {
   void onDisconnect(BLEClient* pclient) {
     connected = false;
     Serial.println("onDisconnect");
-    digitalWrite(LED,LOW);
+    tft.fillScreen(TFT_BLACK);
   }
 };
 
@@ -70,9 +71,9 @@ static void notifyCallback(
       sscanf((char*)pData, "tmp %d %d %d", &i, &reqTemp, &curTemp);
 
       if (abs(curTemp - reqTemp) < 100) {
-        digitalWrite(LED,HIGH);
+        tft.fillScreen(TFT_GREEN);
       } else {
-        digitalWrite(LED,LOW);
+        tft.fillScreen(TFT_BLACK);
       }
       float temp = curTemp / 100.0;
       Serial.printf("%.2f\n", temp);
@@ -124,9 +125,10 @@ void loop() {
 
     Serial.println("Scan done!");
     pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
-    digitalWrite(LED,HIGH);
+    
+    tft.fillScreen(TFT_GREEN);
     delay(200);
-    digitalWrite(LED,LOW);
+    tft.fillScreen(TFT_BLACK);
   }
 
   if (doConnect == true) {

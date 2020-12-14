@@ -3,8 +3,14 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 #include <TFT_eSPI.h>
+#include "Button2.h"
+
+#define BUTTON_1            35
+#define BUTTON_2            0
 
 TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
+Button2 btn1(BUTTON_1);
+Button2 btn2(BUTTON_2);
 
 int scanTime = 5; //In seconds
 BLEScan* pBLEScan;
@@ -25,7 +31,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         BLEDevice::getScan()->stop();
         myDevice = new BLEAdvertisedDevice(advertisedDevice);
         doConnect = true;
-      } // Found our server
+      }
     }
 };
 
@@ -34,11 +40,21 @@ void setup() {
   Serial.println("Scanning...");
   
   tft.init();
+  tft.setRotation(1);
 
+  tft.fillScreen(TFT_BLACK); // Clear Screen
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("Looking for meCoffee...",  tft.width() / 2, tft.height() / 2 );
+
+  delay(2000);
+  tft.setTextSize(7);
+  sleepDisplay();
+  
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-//  pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
+  pBLEScan->setActiveScan(false); //active scan uses more power, but get results faster
   pBLEScan->setInterval(100);
   pBLEScan->setWindow(99);  // less or equal setInterval value
 }
@@ -50,7 +66,7 @@ class MyClientCallback : public BLEClientCallbacks {
   void onDisconnect(BLEClient* pclient) {
     connected = false;
     Serial.println("onDisconnect");
-    tft.fillScreen(TFT_BLACK);
+    sleepDisplay();  
   }
 };
 
@@ -70,13 +86,17 @@ static void notifyCallback(
 
       sscanf((char*)pData, "tmp %d %d %d", &i, &reqTemp, &curTemp);
 
-      if (abs(curTemp - reqTemp) < 100) {
-        tft.fillScreen(TFT_GREEN);
-      } else {
-        tft.fillScreen(TFT_BLACK);
-      }
+//      if (abs(curTemp - reqTemp) < 100) {
+//        tft.fillScreen(TFT_GREEN);
+//      } else {
+//        tft.fillScreen(TFT_BLACK);
+//      }
       float temp = curTemp / 100.0;
       Serial.printf("%.2f\n", temp);
+
+      int tempShort = curTemp / 100;
+
+      tft.drawString(String(tempShort),  tft.width() / 2, tft.height() / 2 );
     }
 }
 
@@ -114,6 +134,16 @@ void connectToServer() {
 
     connected = true;
     Serial.println("Connected to meCoffee");
+    wakeDisplay();
+}
+
+void sleepDisplay() {
+  tft.fillScreen(TFT_BLACK); // Clear Screen
+  digitalWrite(TFT_BL, !digitalRead(TFT_BL));
+}
+
+void wakeDisplay() {
+  digitalWrite(TFT_BL, !digitalRead(TFT_BL));
 }
 
 void loop() {
@@ -125,10 +155,7 @@ void loop() {
 
     Serial.println("Scan done!");
     pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
-    
-    tft.fillScreen(TFT_GREEN);
     delay(200);
-    tft.fillScreen(TFT_BLACK);
   }
 
   if (doConnect == true) {
@@ -136,7 +163,6 @@ void loop() {
     connectToServer();
     doConnect = false;
   }
-
 
   delay(2000);
 }

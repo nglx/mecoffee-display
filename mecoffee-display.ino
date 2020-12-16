@@ -20,8 +20,12 @@ static BLEUUID charUUID("0000ffe1-0000-1000-8000-00805f9b34fb");
 
 static boolean doConnect = false;
 static boolean connected = false;
+static boolean brewing = false;
+static unsigned long shotStarted = -1;
+
 static BLEAdvertisedDevice* myDevice;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
+
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
@@ -82,6 +86,20 @@ void drawTemperature(String temperature, uint16_t color) {
   }
 }
 
+void drawShotTime(String shotTime, uint16_t color) {
+  static String currentShotTime = "";
+  if (currentShotTime != shotTime) {
+    tft.setTextColor(TFT_BLACK);
+    tft.drawString(currentShotTime, tft.width() / 2, 3 * (tft.height() / 4) );
+  
+    currentShotTime = shotTime;
+    
+    tft.setTextColor(color);
+    tft.drawString(currentShotTime, tft.width() / 2, 3 * (tft.height() / 4) );
+  }
+}
+
+
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
@@ -100,8 +118,19 @@ static void notifyCallback(
     } else if (sData.startsWith("sht")) {
       int i, ms;
 
+      if (ms == 0) {
+        brewing = true;
+        shotStarted = millis();
+      } else {
+        brewing = false;
+      }
+
       sscanf((char*)pData, "sht %d %d", &i, &ms);
-      tft.drawString(String(ms / 1000) + "s",  tft.width() / 2, 3 * (tft.height() / 4) );
+      drawShotTime(String(ms / 1000) + "s", TFT_GREEN);
+    }
+
+    if (!sData.startsWith("sht") && brewing) {
+      drawShotTime(String((millis() - shotStarted) / 1000) + "s", TFT_GREEN);
     }
 }
 
@@ -140,7 +169,6 @@ void connectToServer() {
   connected = true;
   Serial.println("Connected to meCoffee");
   wakeDisplay();
-  tft.drawString("0s", tft.width() / 2, 3 * (tft.height() / 4) );
 }
 
 void sleepDisplay() {
@@ -150,6 +178,7 @@ void sleepDisplay() {
 
 void wakeDisplay() {
   digitalWrite(TFT_BL, !digitalRead(TFT_BL));
+  drawShotTime("0s", TFT_GREEN);
 }
 
 void loop() {

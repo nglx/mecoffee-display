@@ -69,7 +69,7 @@ class MyClientCallback : public BLEClientCallbacks {
   }
 };
 
-void drawTemperature(String temperature) {
+void drawTemperature(String temperature, uint16_t color) {
   static String currentTemperature = "";
   if (currentTemperature != temperature) {
     tft.setTextColor(TFT_BLACK);
@@ -77,7 +77,7 @@ void drawTemperature(String temperature) {
   
     currentTemperature = temperature;
     
-    tft.setTextColor(TFT_GREEN);
+    tft.setTextColor(color);
     tft.drawString(currentTemperature,  tft.width() / 2, tft.height() / 4 );
   }
 }
@@ -93,7 +93,10 @@ static void notifyCallback(
       int i, reqTemp, curTemp;
 
       sscanf((char*)pData, "tmp %d %d %d", &i, &reqTemp, &curTemp);
-      drawTemperature(String(curTemp / 100) + "C");
+
+      uint16_t color = (curTemp > (reqTemp - 100)) ? TFT_GREEN : TFT_ORANGE;
+      
+      drawTemperature(String(curTemp / 100) + "C", color);
     } else if (sData.startsWith("sht")) {
       int i, ms;
 

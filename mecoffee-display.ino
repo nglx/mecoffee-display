@@ -90,27 +90,15 @@ static void notifyCallback(
     String sData = (char*)pData;
 
     if (sData.startsWith("tmp")) {
-      int i;
-      int reqTemp;
-      int curTemp;
+      int i, reqTemp, curTemp;
 
       sscanf((char*)pData, "tmp %d %d %d", &i, &reqTemp, &curTemp);
-
-      float temp = curTemp / 100.0;
-      Serial.printf("%.2f\n", temp);
-
-      int tempShort = curTemp / 100;
-
-      drawTemperature(String(tempShort) + "C");
+      drawTemperature(String(curTemp / 100) + "C");
     } else if (sData.startsWith("sht")) {
-      int i;
-      int ms;
+      int i, ms;
 
       sscanf((char*)pData, "sht %d %d", &i, &ms);
-
-
-      int seconds = ms / 1000;
-      tft.drawString(String(seconds) + "s",  tft.width() / 2, 3 * (tft.height() / 4) );
+      tft.drawString(String(ms / 1000) + "s",  tft.width() / 2, 3 * (tft.height() / 4) );
     }
 }
 

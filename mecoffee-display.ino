@@ -130,7 +130,7 @@ static void notifyCallback(
     }
 
     if (!sData.startsWith("sht") && brewing) {
-      drawShotTime(String((millis() - shotStarted) / 1000) + "s", TFT_GREEN);
+      drawShotTime(String((millis() - shotStarted) / 1000) + "s", TFT_ORANGE);
     }
 }
 
@@ -178,7 +178,7 @@ void sleepDisplay() {
 
 void wakeDisplay() {
   digitalWrite(TFT_BL, !digitalRead(TFT_BL));
-  drawShotTime("0s", TFT_GREEN);
+  drawShotTime("0s", TFT_LIGHTGREY);
 }
 
 void loop() {

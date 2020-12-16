@@ -40,7 +40,6 @@ void setup() {
   Serial.println("Scanning...");
   
   tft.init();
-//  tft.setRotation(1);
 
   tft.fillScreen(TFT_BLACK); // Clear Screen
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
@@ -80,18 +79,12 @@ static void notifyCallback(
     String sData = (char*)pData;
 
     if (sData.startsWith("tmp")) {
-
       int i;
       int reqTemp;
       int curTemp;
 
       sscanf((char*)pData, "tmp %d %d %d", &i, &reqTemp, &curTemp);
 
-//      if (abs(curTemp - reqTemp) < 100) {
-//        tft.fillScreen(TFT_GREEN);
-//      } else {
-//        tft.fillScreen(TFT_BLACK);
-//      }
       float temp = curTemp / 100.0;
       Serial.printf("%.2f\n", temp);
 

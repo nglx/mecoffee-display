@@ -40,16 +40,17 @@ void setup() {
   Serial.println("Scanning...");
   
   tft.init();
-  tft.setRotation(1);
+//  tft.setRotation(1);
 
   tft.fillScreen(TFT_BLACK); // Clear Screen
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
   tft.setTextDatum(MC_DATUM);
-  tft.drawString("Looking for meCoffee...",  tft.width() / 2, tft.height() / 2 );
+  tft.drawString("Scanning...",  tft.width() / 2, tft.height() / 2 );
 
   delay(2000);
-  tft.setTextSize(7);
+  tft.setTextSize(5);
   sleepDisplay();
+  tft.drawString("0s", tft.width() / 2, 3 * (tft.height() / 4) );
   
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
@@ -96,7 +97,16 @@ static void notifyCallback(
 
       int tempShort = curTemp / 100;
 
-      tft.drawString(String(tempShort),  tft.width() / 2, tft.height() / 2 );
+      tft.drawString(String(tempShort) + "C",  tft.width() / 2, tft.height() / 4 );
+    } else if (sData.startsWith("sht")) {
+      int i;
+      int ms;
+
+      sscanf((char*)pData, "sht %d %d", &i, &ms);
+
+
+      int seconds = ms / 1000;
+      tft.drawString(String(seconds) + "s",  tft.width() / 2, 3 * (tft.height() / 4) );
     }
 }
 

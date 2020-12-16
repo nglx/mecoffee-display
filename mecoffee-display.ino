@@ -49,7 +49,6 @@ void setup() {
   delay(2000);
   tft.setTextSize(5);
   sleepDisplay();
-  tft.drawString("0s", tft.width() / 2, 3 * (tft.height() / 4) );
   
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
@@ -70,6 +69,17 @@ class MyClientCallback : public BLEClientCallbacks {
   }
 };
 
+void drawTemperature(String temperature) {
+  static String currentTemperature = "";
+  
+  tft.setTextColor(TFT_BLACK, TFT_BLACK);
+  tft.drawString(currentTemperature,  tft.width() / 2, tft.height() / 4 );
+
+  currentTemperature = temperature;
+  
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  tft.drawString(currentTemperature,  tft.width() / 2, tft.height() / 4 );
+}
 
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
@@ -90,7 +100,7 @@ static void notifyCallback(
 
       int tempShort = curTemp / 100;
 
-      tft.drawString(String(tempShort) + "C",  tft.width() / 2, tft.height() / 4 );
+      drawTemperature(String(tempShort) + "C");
     } else if (sData.startsWith("sht")) {
       int i;
       int ms;
@@ -104,40 +114,41 @@ static void notifyCallback(
 }
 
 void connectToServer() {
-    BLEClient*  pClient  = BLEDevice::createClient();
-    pClient->setClientCallbacks(new MyClientCallback());
-    pClient->connect(myDevice);  // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
+  BLEClient*  pClient  = BLEDevice::createClient();
+  pClient->setClientCallbacks(new MyClientCallback());
+  pClient->connect(myDevice);  // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
 
 
-    BLERemoteService* pRemoteService = pClient->getService(meCoffeeServiceUUID);
-    if (pRemoteService == nullptr) {
-      Serial.print("Failed to find our service UUID: ");
-      Serial.println(meCoffeeServiceUUID.toString().c_str());
-      pClient->disconnect();
+  BLERemoteService* pRemoteService = pClient->getService(meCoffeeServiceUUID);
+  if (pRemoteService == nullptr) {
+    Serial.print("Failed to find our service UUID: ");
+    Serial.println(meCoffeeServiceUUID.toString().c_str());
+    pClient->disconnect();
 
-      connected = false;
-      return;
-    }
+    connected = false;
+    return;
+  }
 
-    Serial.println(" - Found our service");
+  Serial.println(" - Found our service");
 
-    pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
-    if (pRemoteCharacteristic == nullptr) {
-      Serial.print("Failed to find our characteristic UUID: ");
-      Serial.println(charUUID.toString().c_str());
-      pClient->disconnect();
+  pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+  if (pRemoteCharacteristic == nullptr) {
+    Serial.print("Failed to find our characteristic UUID: ");
+    Serial.println(charUUID.toString().c_str());
+    pClient->disconnect();
 
-      connected = false;
-      return;
-    }
-    Serial.println(" - Found our characteristic");
+    connected = false;
+    return;
+  }
+  Serial.println(" - Found our characteristic");
 
-    if(pRemoteCharacteristic->canNotify())
-      pRemoteCharacteristic->registerForNotify(notifyCallback);
+  if(pRemoteCharacteristic->canNotify())
+    pRemoteCharacteristic->registerForNotify(notifyCallback);
 
-    connected = true;
-    Serial.println("Connected to meCoffee");
-    wakeDisplay();
+  connected = true;
+  Serial.println("Connected to meCoffee");
+  wakeDisplay();
+  tft.drawString("0s", tft.width() / 2, 3 * (tft.height() / 4) );
 }
 
 void sleepDisplay() {

@@ -27,6 +27,9 @@ static BLEAdvertisedDevice* myDevice;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
 
+static String currentShotTime = "";
+static String currentTemperature = "";
+
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
       Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
@@ -49,6 +52,7 @@ void setup() {
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
   tft.setTextDatum(MC_DATUM);
   tft.drawString("Scanning...",  tft.width() / 2, tft.height() / 2 );
+  tft.setTextDatum(MR_DATUM);
 
   delay(2000);
   tft.setTextSize(5);
@@ -64,38 +68,42 @@ void setup() {
 
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
+    currentShotTime = "";
+    currentTemperature = "";
+    drawShotTime("0s", TFT_LIGHTGREY);
   }
 
   void onDisconnect(BLEClient* pclient) {
     connected = false;
+    brewing = false;
     Serial.println("onDisconnect");
     sleepDisplay();  
   }
 };
 
 void drawTemperature(String temperature, uint16_t color) {
-  static String currentTemperature = "";
   if (currentTemperature != temperature) {
-    tft.setTextColor(TFT_BLACK);
-    tft.drawString(currentTemperature,  tft.width() / 2, tft.height() / 4 );
+    if (currentTemperature == "99" && temperature == "100") {
+      tft.setTextColor(TFT_BLACK, TFT_BLACK);
+      tft.drawString(temperature,  tft.width() / 2, tft.height() / 4 + 10 );      
+    }
   
     currentTemperature = temperature;
     
-    tft.setTextColor(color);
-    tft.drawString(currentTemperature,  tft.width() / 2, tft.height() / 4 );
+    tft.setTextColor(color, TFT_BLACK);
+    tft.drawString(currentTemperature,  tft.width() - 7, tft.height() / 4 + 10 );
   }
 }
 
 void drawShotTime(String shotTime, uint16_t color) {
-  static String currentShotTime = "";
   if (currentShotTime != shotTime) {
-    tft.setTextColor(TFT_BLACK);
-    tft.drawString(currentShotTime, tft.width() / 2, 3 * (tft.height() / 4) );
+//    tft.setTextColor(TFT_BLACK, TFT_BLACK);
+//    tft.drawString(currentShotTime, tft.width() - 5, 3 * (tft.height() / 4) );
   
     currentShotTime = shotTime;
     
-    tft.setTextColor(color);
-    tft.drawString(currentShotTime, tft.width() / 2, 3 * (tft.height() / 4) );
+    tft.setTextColor(color, TFT_BLACK);
+    tft.drawString(" " + currentShotTime, tft.width() - 7, 3 * (tft.height() / 4) - 10 );
   }
 }
 
@@ -117,16 +125,20 @@ static void notifyCallback(
       drawTemperature(String(curTemp / 100) + "C", color);
     } else if (sData.startsWith("sht")) {
       int i, ms;
-
-      if (ms == 0) {
-        brewing = true;
-        shotStarted = millis();
-      } else {
-        brewing = false;
-      }
+      uint16_t color;
 
       sscanf((char*)pData, "sht %d %d", &i, &ms);
-      drawShotTime(String(ms / 1000) + "s", TFT_GREEN);
+      if (ms == 0) {
+        brewing = true;
+        
+        shotStarted = millis();
+        color = TFT_ORANGE;
+      } else {
+        brewing = false;
+        color = TFT_GREEN;
+      }
+
+      drawShotTime(String(ms / 1000) + "s", color);
     }
 
     if (!sData.startsWith("sht") && brewing) {
@@ -178,7 +190,6 @@ void sleepDisplay() {
 
 void wakeDisplay() {
   digitalWrite(TFT_BL, !digitalRead(TFT_BL));
-  drawShotTime("0s", TFT_LIGHTGREY);
 }
 
 void loop() {

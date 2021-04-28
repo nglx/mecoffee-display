@@ -83,15 +83,15 @@ class MyClientCallback : public BLEClientCallbacks {
 
 void drawTemperature(String temperature, uint16_t color) {
   if (currentTemperature != temperature) {
-    if (currentTemperature == "99" && temperature == "100") {
+    if (currentTemperature.length() == 4 && temperature.length() == 3) {
       tft.setTextColor(TFT_BLACK, TFT_BLACK);
-      tft.drawString(temperature,  tft.width() / 2, tft.height() / 4 + 10 );      
+      tft.drawString(currentTemperature, tft.width() - 7, tft.height() / 4 + 10 );      
     }
   
     currentTemperature = temperature;
     
     tft.setTextColor(color, TFT_BLACK);
-    tft.drawString(currentTemperature,  tft.width() - 7, tft.height() / 4 + 10 );
+    tft.drawString(currentTemperature, tft.width() - 7, tft.height() / 4 + 10 );
   }
 }
 

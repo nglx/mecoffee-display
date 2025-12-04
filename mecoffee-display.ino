@@ -192,9 +192,9 @@ void wakeDisplay() {
 
 void loop() {
   if (!connected) {
-    BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+    BLEScanResults* foundDevices = pBLEScan->start(scanTime, false);
     Serial.print("Devices found: ");
-    Serial.println(foundDevices.getCount());
+    Serial.println(foundDevices->getCount());
 
 
     Serial.println("Scan done!");

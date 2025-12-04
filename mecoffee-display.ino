@@ -40,6 +40,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Scanning...");
 
+  pinMode(TFT_BL, OUTPUT);
   tft.init();
 
   tft.fillScreen(TFT_BLACK); // Clear Screen
@@ -153,6 +154,7 @@ void connectToServer() {
     pClient->disconnect();
 
     connected = false;
+    sleepDisplay();
     return;
   }
 
@@ -165,6 +167,7 @@ void connectToServer() {
     pClient->disconnect();
 
     connected = false;
+    sleepDisplay();
     return;
   }
   Serial.println(" - Found our characteristic");
@@ -178,12 +181,13 @@ void connectToServer() {
 }
 
 void sleepDisplay() {
-  tft.fillScreen(TFT_BLACK); // Clear Screen
-  digitalWrite(TFT_BL, !digitalRead(TFT_BL));
+  digitalWrite(TFT_BL, LOW);  // Backlight OFF
+  tft.fillScreen(TFT_BLACK);
 }
 
 void wakeDisplay() {
-  digitalWrite(TFT_BL, !digitalRead(TFT_BL));
+  tft.fillScreen(TFT_BLACK);  // Clear any stale content
+  digitalWrite(TFT_BL, HIGH); // Backlight ON
 }
 
 void loop() {

@@ -89,6 +89,13 @@ void initOLED() {
     oled.setContrast(255);
     oled.setDrawColor(1);
 
+    // Force normal display mode (not inverted)
+    // SH1107 command 0xA6 = normal, 0xA7 = inverted
+    u8x8_t *u8x8 = oled.getU8x8();
+    u8x8_cad_StartTransfer(u8x8);
+    u8x8_cad_SendCmd(u8x8, 0xA6);
+    u8x8_cad_EndTransfer(u8x8);
+
     // Keep OLED off until connected (burn-in protection)
     oled.clearBuffer();
     oled.sendBuffer();

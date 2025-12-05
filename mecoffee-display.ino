@@ -12,7 +12,7 @@ U8G2_SH1107_64X128_F_HW_I2C oled(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 // BLE
 static BLEUUID meCoffeeServiceUUID("0000ffe0-0000-1000-8000-00805f9b34fb");
 static BLEUUID charUUID("0000ffe1-0000-1000-8000-00805f9b34fb");
-BLEScan* pBLEScan;
+BLEScan* pBLEScan = nullptr;
 static BLEClient* pClient = nullptr;
 static BLEAdvertisedDevice* myDevice = nullptr;
 
@@ -27,6 +27,7 @@ static unsigned long shotStarted = 0;
 static unsigned long lastShotActivity = 0;
 static unsigned long lastDataReceived = 0;
 static unsigned long lastShiftTime = 0;
+static unsigned long lastLoopTime = 0;
 static int tempYOffset = 0;
 
 // Display values
@@ -37,13 +38,14 @@ static String currentShotTime = "";
 const int SCAN_TIME = 5;
 const unsigned long SHOT_DISPLAY_TIMEOUT_MS = 60000;   // Hide shot time after 1 min
 const unsigned long PIXEL_SHIFT_INTERVAL_MS = 5000;    // Shift every 5 sec
-const unsigned long CONNECTION_TIMEOUT_MS = 120000;   // Watchdog: 2 min
+const unsigned long CONNECTION_TIMEOUT_MS = 120000;   // Watchdog: 2 min no data
+const unsigned long LOOP_WATCHDOG_MS = 30000;         // Watchdog: 30 sec no loop
 
 // Forward declarations
 void sleepDisplay();
 void wakeDisplay();
 void updateOLED();
-void disconnectAndReset();
+void fullReset();
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
@@ -78,28 +80,33 @@ class MyClientCallback : public BLEClientCallbacks {
 
 static MyClientCallback clientCallback;
 
-void setup() {
-  M5.begin();
-  Serial.begin(9600);
-  Serial.println("meCoffee Display starting...");
-
-  // Turn off M5StickC LCD (we use external OLED only)
-  M5.Axp.ScreenBreath(0);
-  M5.Lcd.fillScreen(TFT_BLACK);
-
-  // Initialize external OLED
+void initOLED() {
   Wire.begin(32, 33);
   oled.setI2CAddress(0x3C << 1);
 
   if (oled.begin()) {
     Serial.println("OLED initialized");
+    oled.setContrast(255);
+    oled.setDrawColor(1);
+
+    // Keep OLED off until connected (burn-in protection)
     oled.clearBuffer();
-    oled.setFont(u8g2_font_helvB10_tr);
-    oled.drawStr(2, 70, "Scanning...");
     oled.sendBuffer();
   } else {
     Serial.println("OLED init failed!");
   }
+}
+
+void setup() {
+  M5.begin();
+  Serial.begin(9600);
+  Serial.println("meCoffee Display starting...");
+
+  // Turn off M5StickC LCD
+  M5.Axp.ScreenBreath(0);
+  M5.Lcd.fillScreen(TFT_BLACK);
+
+  initOLED();
 
   // Initialize BLE
   BLEDevice::init("meCoffeeDisplay");
@@ -108,27 +115,28 @@ void setup() {
   pBLEScan->setActiveScan(true);
   pBLEScan->setInterval(100);
   pBLEScan->setWindow(99);
+
+  lastLoopTime = millis();
 }
 
 void updateOLED() {
-  // Check if shot time should be hidden (timeout)
+  // Check if shot time should be hidden
   if (showShotTime && !brewing && (millis() - lastShotActivity > SHOT_DISPLAY_TIMEOUT_MS)) {
     showShotTime = false;
     currentShotTime = "";
   }
 
-  // Pixel shifting: when shot time is NOT shown, shift temperature around
-  int tempY = 45;  // Default position
+  // Pixel shifting when shot time not shown
+  int tempY = 45;
 
   if (!showShotTime) {
-    // Shift position every PIXEL_SHIFT_INTERVAL_MS
     if (millis() - lastShiftTime > PIXEL_SHIFT_INTERVAL_MS) {
       lastShiftTime = millis();
       tempYOffset = (tempYOffset + 30) % 120;
     }
-    tempY = 28 + tempYOffset;  // Range: 28 to 118
+    tempY = 28 + tempYOffset;
   } else {
-    tempYOffset = 0;  // Reset when shot timer shown
+    tempYOffset = 0;
   }
 
   oled.clearBuffer();
@@ -136,13 +144,11 @@ void updateOLED() {
 
   int displayWidth = oled.getDisplayWidth();
 
-  // Draw temperature
   if (currentTemperature.length() > 0) {
     int tempWidth = oled.getStrWidth(currentTemperature.c_str());
     oled.drawStr(displayWidth - tempWidth - 3, tempY, currentTemperature.c_str());
   }
 
-  // Draw shot time (fixed position at bottom)
   if (showShotTime && currentShotTime.length() > 0) {
     int shotWidth = oled.getStrWidth(currentShotTime.c_str());
     oled.drawStr(displayWidth - shotWidth - 3, 105, currentShotTime.c_str());
@@ -183,7 +189,6 @@ static void notifyCallback(
     updateOLED();
   }
 
-  // Update shot timer while brewing
   if (!sData.startsWith("sht") && brewing) {
     lastShotActivity = millis();
     currentShotTime = String((millis() - shotStarted) / 1000) + "s";
@@ -236,7 +241,7 @@ bool connectToServer() {
 }
 
 void disconnectAndReset() {
-  Serial.println("Resetting connection...");
+  Serial.println("Soft reset...");
 
   if (pClient != nullptr && pClient->isConnected()) {
     pClient->disconnect();
@@ -252,6 +257,12 @@ void disconnectAndReset() {
   sleepDisplay();
 }
 
+void fullReset() {
+  Serial.println("Full system reset!");
+  delay(100);
+  ESP.restart();
+}
+
 void sleepDisplay() {
   oled.clearBuffer();
   oled.sendBuffer();
@@ -263,14 +274,21 @@ void wakeDisplay() {
 
 void loop() {
   M5.update();
+  lastLoopTime = millis();
 
-  // Watchdog: force reconnect if no data for too long
+  // Button A (big button): Force full restart
+  if (M5.BtnA.wasPressed()) {
+    Serial.println("Button pressed - restarting...");
+    fullReset();
+  }
+
+  // Watchdog: no data for too long while "connected"
   if (connected && (millis() - lastDataReceived > CONNECTION_TIMEOUT_MS)) {
-    Serial.println("Watchdog triggered - no data received");
+    Serial.println("Watchdog: no data - resetting connection");
     disconnectAndReset();
   }
 
-  // Scan for devices when not connected
+  // Scan when not connected
   if (!connected && !doConnect) {
     BLEScanResults* foundDevices = pBLEScan->start(SCAN_TIME, false);
     Serial.printf("Scan: %d devices\n", foundDevices->getCount());
@@ -279,11 +297,14 @@ void loop() {
 
   // Connect when device found
   if (doConnect) {
-    connectToServer();
+    if (!connectToServer()) {
+      Serial.println("Connect failed - will retry");
+      delay(1000);
+    }
     doConnect = false;
   }
 
-  // Update OLED periodically (for pixel shifting and shot timeout)
+  // Update OLED
   if (connected) {
     updateOLED();
   }
